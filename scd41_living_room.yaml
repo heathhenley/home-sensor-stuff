@@ -1,0 +1,101 @@
+esphome:
+  name: scd41-living-room
+  friendly_name: Living Room Air Quality
+
+esp32:
+  board: seeed_xiao_esp32c3
+  framework:
+    type: esp-idf
+
+logger:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s
+
+captive_portal:
+
+api:
+  # encryption:
+  #   key: "PASTE_32_BYTE_BASE64_KEY_HERE" (openssl rand -base64 32)
+
+# Wake, take readings, publish to HA, then sleep 5 min.
+# run_duration must be LONGER than the sensor update_intervals below, or the
+# sensors never fire before we sleep. Tune run_duration down to save battery
+# once you confirm readings reliably reach HA.
+#
+deep_sleep:
+  id: deep_sleep_1
+  run_duration: 25s
+  sleep_duration: 5min
+
+# I2C bus — XIAO ESP32-C3 default pins: D4=GPIO6 (SDA), D5=GPIO7 (SCL)
+i2c:
+  sda: GPIO6
+  scl: GPIO7
+  scan: true                       # logs any device found, expect 0x62
+
+sensor:
+  - platform: scd4x
+    co2:
+      name: "CO2"
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    # single_shot: one measurement per trigger (~5s), required for deep sleep.
+    # Trade-off vs periodic: lower CO2 accuracy and the first read after wake
+    # drifts. With update_interval 10s we trigger twice per 25s wake, so the
+    # published (second) reading is the more settled one.
+    measurement_mode: single_shot
+    update_interval: 10s
+
+  - platform: adc
+    # GPIO3 = A1/D1. Do NOT use GPIO2 (A0): it's an ESP32-C3 strapping pin, and
+    # the divider voltage on it blocks boot/download mode (can't flash). This
+    # cost me a while - even though the docs used A0
+    pin: GPIO3
+    name: "Battery Voltage"
+    id: battery_voltage
+    attenuation: 12db
+    update_interval: 1s       # fast burst; median below smooths it
+    accuracy_decimals: 2
+    filters:
+      # divider is 1/2 (200k + 200k) -> multiply by 2 for true battery V
+      - multiply: 2.0
+      # median over a quick 5-sample burst kills ADC spikes. A time-based
+      # moving average can't work here: deep sleep wipes filter state each wake.
+      - median:
+          window_size: 5
+          send_every: 5
+          send_first_at: 5
+
+  - platform: template
+    name: "Battery Level"
+    id: battery_level
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    device_class: battery
+    lambda: |-
+      float v = id(battery_voltage).state;
+      if (isnan(v)) return {};
+      if (v >= 4.20) return 100.0;
+      if (v <= 3.30) return 0.0;
+      return (v - 3.30) / (4.20 - 3.30) * 100.0;
+    update_interval: 10s
+
+# OTA / maintenance hatch
+switch:
+  - platform: template
+    name: "Prevent Deep Sleep"
+    id: prevent_sleep
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - deep_sleep.prevent: deep_sleep_1
+    on_turn_off:
+      - deep_sleep.allow: deep_sleep_1
