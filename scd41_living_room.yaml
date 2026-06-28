@@ -16,6 +16,12 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   reboot_timeout: 0s
+  fast_connect: true
+  manual_ip:
+    static_ip: 192.168.1.81
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+    dns1: 192.168.1.1
 
 captive_portal:
 
@@ -31,7 +37,7 @@ api:
 deep_sleep:
   id: deep_sleep_1
   run_duration: 25s
-  sleep_duration: 5min
+  sleep_duration: 30min
 
 # I2C bus — XIAO ESP32-C3 default pins: D4=GPIO6 (SDA), D5=GPIO7 (SCL)
 i2c:
@@ -41,6 +47,10 @@ i2c:
 
 sensor:
   - platform: scd4x
+    # default must assume constant running, or it's just this chip
+    # but it was consistently biased low, it subtracts 4 C by
+    # default
+    temperature_offset: 0
     co2:
       name: "CO2"
     temperature:
