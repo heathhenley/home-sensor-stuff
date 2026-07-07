@@ -19,9 +19,8 @@ ota:
 
 external_components:
   - source:
-      type: git
-      url: https://github.com/jdillenburg/esphome
-      ref: main
+      type: local
+      path: components
     components: [ adxl345 ]
 
 i2c:
@@ -39,13 +38,26 @@ adxl345:
       id: jitter
       name: "Jitter"
 
+sensor:
+  platform: template
+  id: smoothed_jitter
+  name: "Smoothed Jitter"
+  lambda: "return id(jitter).state;"
+  update_interval: 1s
+  state_class: measurement
+  unit_of_measurement: "m/s²"
+  filters:
+    - sliding_window_moving_average:
+        window_size: 60
+        send_every: 5
+
 binary_sensor:
   - platform: template
     name: "Running"
     id: dryer_running
     publish_initial_state: true
     lambda: |-
-      return id(jitter).state > id(jitter_threshold).state;
+      return id(smoothed_jitter).state > id(jitter_threshold).state;
     filters:
       - delayed_off: 20min
 
@@ -54,8 +66,8 @@ number:
     name: "Jitter Threshold"
     id: jitter_threshold
     optimistic: true
-    min_value: 0
-    max_value: 20
+    min_value: 10
+    max_value: 40
     step: 0.5
-    initial_value: 6.5
+    initial_value: 13
     restore_value: true
