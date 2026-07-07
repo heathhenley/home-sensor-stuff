@@ -34,22 +34,32 @@ adxl345:
     address: 0x53
     update_interval: 500ms
     range: 4G
-    jitter:
-      id: jitter
-      name: "Jitter"
+    accel_x:
+      id: x
+      name: "Acceleration X"
+      unit_of_measurement: "m/s²"
+    accel_y:
+      id: y
+      name: "Acceleration Y"
+      unit_of_measurement: "m/s²"
+    accel_z:
+      id: z
+      name: "Acceleration Z"
+      unit_of_measurement: "m/s²"
 
 sensor:
-  platform: template
-  id: smoothed_jitter
-  name: "Smoothed Jitter"
-  lambda: "return id(jitter).state;"
-  update_interval: 1s
-  state_class: measurement
-  unit_of_measurement: "m/s²"
-  filters:
-    - sliding_window_moving_average:
-        window_size: 60
-        send_every: 5
+  - platform: template
+    id: smoothed_jitter
+    update_interval: 500ms
+    name: "Smoothed Jitter"
+    state_class: measurement
+    unit_of_measurement: "m/s²"
+    lambda: |-
+      return fabs(id(x).state) + fabs(id(y).state) + fabs(id(z).state);
+    filters:
+      - sliding_window_moving_average:
+          window_size: 60
+          send_every: 5
 
 binary_sensor:
   - platform: template
