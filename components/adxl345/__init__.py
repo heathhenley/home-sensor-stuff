@@ -71,7 +71,7 @@ async def to_code(config):
     await i2c.register_i2c_device(var, config)
     
     cg.add(var.set_range(config[CONF_RANGE]))
-    
+
     if CONF_FULL_RES in config:
         cg.add(var.set_full_res(config[CONF_FULL_RES]))
     
