@@ -21,6 +21,7 @@ class ADXL345Component : public PollingComponent, public i2c::I2CDevice {
   void set_accel_y_sensor(sensor::Sensor *accel_y) { accel_y_ = accel_y; }
   void set_accel_z_sensor(sensor::Sensor *accel_z) { accel_z_ = accel_z; }
   void set_range(uint8_t range) { range_ = range; }
+  void set_full_res(bool full_res) { full_res_ = full_res ? 0x08 : 0x00; }
 
  protected:
   sensor::Sensor *off_vertical_{nullptr};
@@ -29,6 +30,7 @@ class ADXL345Component : public PollingComponent, public i2c::I2CDevice {
   sensor::Sensor *accel_y_{nullptr};
   sensor::Sensor *accel_z_{nullptr};
   uint8_t range_{0};  // Default 2G
+  uint8_t full_res_{0}; // Default 10 bit resolution
 };
 
 }  // namespace adxl345

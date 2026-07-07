@@ -2,6 +2,11 @@
 
 This is a custom component for ESPHome that interfaces with the ADXL345 3-axis accelerometer.
 
+This is fork of original [here](https://github.com/jdillenburg/esphome/tree/main/components/adxl345). Fixed a bug with hardcoded mg/LSB constant
+in fixed resolution mode and exposed it as a configuration option.
+
+Datasheet: [ADXL345](https://www.analog.com/media/en/technical-documentation/data-sheets/adxl345.pdf)
+
 ## Features
 
 - Supports all standard I2C configuration options including multiple I2C buses

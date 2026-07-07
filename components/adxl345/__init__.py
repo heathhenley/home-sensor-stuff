@@ -16,6 +16,8 @@ RANGE_4G = 1
 RANGE_8G = 2
 RANGE_16G = 3
 
+CONF_FULL_RES = "full_res"
+
 CONF_OFF_VERTICAL = "off_vertical"
 CONF_JITTER = "jitter"
 CONF_ACCEL_X = "accel_x"
@@ -36,6 +38,7 @@ CONFIG_SCHEMA = cv.Schema({
         accuracy_decimals=1,
         state_class=STATE_CLASS_MEASUREMENT,
     ),
+    cv.Optional(CONF_FULL_RES): cv.boolean,
     cv.Optional(CONF_JITTER): sensor.sensor_schema(
         unit_of_measurement="m/s²",
         icon="mdi:vibrate",
@@ -68,6 +71,9 @@ async def to_code(config):
     await i2c.register_i2c_device(var, config)
     
     cg.add(var.set_range(config[CONF_RANGE]))
+    
+    if CONF_FULL_RES in config:
+        cg.add(var.set_full_res(config[CONF_FULL_RES]))
     
     if CONF_OFF_VERTICAL in config:
         sens = await sensor.new_sensor(config[CONF_OFF_VERTICAL])

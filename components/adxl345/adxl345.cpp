@@ -7,11 +7,37 @@ namespace adxl345 {
 
 static const char *const TAG = "adxl345";
 
+static const float G_MS2 = 9.80665f;
+
 // Register map
 static const uint8_t REG_DEVID       = 0x00;
 static const uint8_t REG_POWER_CTL   = 0x2D;
 static const uint8_t REG_DATA_FORMAT = 0x31;
 static const uint8_t REG_DATAX0      = 0x32;
+
+float ms2_per_lsb(const uint8_t full_res, const uint8_t range) {
+  if (full_res || range == 0) {
+    return 0.0039f * G_MS2;
+  }
+  // 10 bit resolution - res changes
+  switch (range) {
+    case 1: return 0.0078f * G_MS2;
+    case 2: return 0.0156f * G_MS2;
+    case 3: return 0.0312f * G_MS2;
+    default: return 0.0039f * G_MS2;
+  }
+}
+
+uint8_t data_format_bits(const uint8_t range) {
+  switch (range) {
+    case 0: return 0x00; // ±2g
+    case 1: return 0x01; // ±4g
+    case 2: return 0x02; // ±8g
+    case 3: return 0x03; // ±16g
+    default: return 0x00;
+  }
+}
+
 
 void ADXL345Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up ADXL345...");
@@ -25,15 +51,9 @@ void ADXL345Component::setup() {
   }
   ESP_LOGI(TAG, "Found ADXL345 at 0x%02X", this->address_);
 
-  // Set range
-  uint8_t range_bits = 0;
-  switch (this->range_) {
-    case 0: range_bits = 0x00; break; // ±2g
-    case 1: range_bits = 0x01; break; // ±4g
-    case 2: range_bits = 0x02; break; // ±8g
-    case 3: range_bits = 0x03; break; // ±16g
-  }
-  this->write_register(REG_DATA_FORMAT, &range_bits, 1);
+  // Set range and full resolution bits
+  uint8_t data_format = data_format_bits(this->range_) | this->full_res_;
+  this->write_register(REG_DATA_FORMAT, &data_format, 1);
 
   // Enable measurement mode
   uint8_t power = 0x08;
@@ -56,6 +76,8 @@ void ADXL345Component::dump_config() {
     default: range_str = "Unknown"; break;
   }
   ESP_LOGCONFIG(TAG, "  Range: %s", range_str);
+  ESP_LOGCONFIG(
+    TAG, "  Resolution: %s", this->full_res_ ? "Full" : "Fixed (10 bit)");
 
   if (this->off_vertical_ != nullptr) LOG_SENSOR("  ", "Off Vertical", this->off_vertical_);
   if (this->jitter_ != nullptr)       LOG_SENSOR("  ", "Jitter", this->jitter_);
@@ -75,8 +97,7 @@ void ADXL345Component::update() {
   int16_t raw_y = (int16_t)(buffer[3] << 8 | buffer[2]);
   int16_t raw_z = (int16_t)(buffer[5] << 8 | buffer[4]);
 
-  // Scale: 4 mg/LSB in full-res mode (0.004 g), convert to m/s²
-  float scale = 0.004f * 9.80665f;
+  float scale = ms2_per_lsb(this->full_res_, this->range_);
   float x = raw_x * scale;
   float y = raw_y * scale;
   float z = raw_z * scale;
