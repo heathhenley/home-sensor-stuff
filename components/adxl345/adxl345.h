@@ -15,17 +15,13 @@ class ADXL345Component : public PollingComponent, public i2c::I2CDevice {
   void update() override;
   void dump_config() override;
 
-  void set_off_vertical_sensor(sensor::Sensor *off_vertical) { off_vertical_ = off_vertical; }
-  void set_jitter_sensor(sensor::Sensor *jitter) { jitter_ = jitter; }
   void set_accel_x_sensor(sensor::Sensor *accel_x) { accel_x_ = accel_x; }
   void set_accel_y_sensor(sensor::Sensor *accel_y) { accel_y_ = accel_y; }
   void set_accel_z_sensor(sensor::Sensor *accel_z) { accel_z_ = accel_z; }
   void set_range(uint8_t range) { range_ = range; }
-  void set_full_res(bool full_res) { full_res_ = full_res ? 0x08 : 0x00; }
+  void set_full_res(bool full_res) { full_res_ = full_res; }
 
  protected:
-  sensor::Sensor *off_vertical_{nullptr};
-  sensor::Sensor *jitter_{nullptr};
   sensor::Sensor *accel_x_{nullptr};
   sensor::Sensor *accel_y_{nullptr};
   sensor::Sensor *accel_z_{nullptr};

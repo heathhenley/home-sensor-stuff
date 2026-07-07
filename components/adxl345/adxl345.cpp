@@ -15,29 +15,56 @@ static const uint8_t REG_POWER_CTL   = 0x2D;
 static const uint8_t REG_DATA_FORMAT = 0x31;
 static const uint8_t REG_DATAX0      = 0x32;
 
+// REG_DATA_FORMAT bits
+static const uint8_t FULL_RES_SHIFT = 3;
+static const uint8_t FULL_RES_WIDTH = 1;
+static const uint8_t RANGE_SHIFT = 0;
+static const uint8_t RANGE_WIDTH = 2;
+
+// REG_POWER_CTL bits
+static const uint8_t MEASURE_BIT_SHIFT = 3;
+static const uint8_t MEASURE_BIT_WIDTH = 1;
+
+// Labels
+static constexpr std::array<const char*, 4> RANGE_STRINGS = {
+  "2G", "4G", "8G", "16G"
+};
+static constexpr std::array<const char*, 2> RES_STRINGS = {
+   "10 bit", "Full"
+};
+
+// g/LSB for each range in 10 bit resolution mode
+static constexpr std::array<float, 4> MS2_PER_LSB = {
+  0.0039f, // 2G
+  0.0078f, // 4G
+  0.0156f, // 8G
+  0.0312f, // 16G
+};
+
+// g/LSB for full resolution mode (same for all ranges)
+static constexpr float MS2_PER_LSB_FULL_RES = 0.0039f;
+
+uint8_t read_bits(uint8_t reg, const uint8_t shift, const uint8_t width) {
+  uint8_t mask = (1 << width) - 1;
+  return (reg >> shift) & mask;
+}
+
+uint8_t update_bits(
+  uint8_t reg,
+  const uint8_t shift,
+  const uint8_t width,
+  const uint8_t value
+) {
+  uint8_t mask = ((1 << width) - 1) << shift;
+  return (reg & ~mask) | ((value << shift) & mask);
+}
+
 float ms2_per_lsb(const uint8_t full_res, const uint8_t range) {
   if (full_res || range == 0) {
-    return 0.0039f * G_MS2;
+    return MS2_PER_LSB_FULL_RES * G_MS2;
   }
-  // 10 bit resolution - res changes
-  switch (range) {
-    case 1: return 0.0078f * G_MS2;
-    case 2: return 0.0156f * G_MS2;
-    case 3: return 0.0312f * G_MS2;
-    default: return 0.0039f * G_MS2;
-  }
+  return MS2_PER_LSB[range] * G_MS2;
 }
-
-uint8_t data_format_bits(const uint8_t range) {
-  switch (range) {
-    case 0: return 0x00; // ±2g
-    case 1: return 0x01; // ±4g
-    case 2: return 0x02; // ±8g
-    case 3: return 0x03; // ±16g
-    default: return 0x00;
-  }
-}
-
 
 void ADXL345Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up ADXL345...");
@@ -51,14 +78,39 @@ void ADXL345Component::setup() {
   }
   ESP_LOGI(TAG, "Found ADXL345 at 0x%02X", this->address_);
 
+  // Read data format
+  uint8_t data_format;
+  if (this->read_register(REG_DATA_FORMAT, &data_format, 1) != i2c::ERROR_OK) {
+    ESP_LOGE(TAG, "Failed to read data format");
+    this->mark_failed();
+    return;
+  }
+
   // Set range and full resolution bits
-  uint8_t data_format = data_format_bits(this->range_) | this->full_res_;
-  this->write_register(REG_DATA_FORMAT, &data_format, 1);
+  data_format = update_bits(
+    data_format, RANGE_SHIFT, RANGE_WIDTH, this->range_);
+  data_format = update_bits(
+    data_format, FULL_RES_SHIFT, FULL_RES_WIDTH, this->full_res_);
+  if (this->write_register(REG_DATA_FORMAT, &data_format, 1) != i2c::ERROR_OK) {
+    ESP_LOGE(TAG, "Failed to write data format");
+    this->mark_failed();
+    return;
+  };
 
-  // Enable measurement mode
-  uint8_t power = 0x08;
-  this->write_register(REG_POWER_CTL, &power, 1);
-
+  // Set power control to measure mode
+  uint8_t power_ctl;
+  if (this->read_register(REG_POWER_CTL, &power_ctl, 1) != i2c::ERROR_OK) {
+    ESP_LOGE(TAG, "Failed to read power control");
+    this->mark_failed();
+    return;
+  };
+  power_ctl = update_bits(
+    power_ctl, MEASURE_BIT_SHIFT, MEASURE_BIT_WIDTH, 1);
+  if (this->write_register(REG_POWER_CTL, &power_ctl, 1) != i2c::ERROR_OK) {
+    ESP_LOGE(TAG, "Failed to write power control");
+    this->mark_failed();
+    return;
+  };
   ESP_LOGD(TAG, "ADXL345 setup complete");
 }
 
@@ -66,24 +118,15 @@ void ADXL345Component::dump_config() {
   ESP_LOGCONFIG(TAG, "ADXL345:");
   LOG_I2C_DEVICE(this);
   LOG_UPDATE_INTERVAL(this);
+  ESP_LOGCONFIG(TAG, "  Range: %s", RANGE_STRINGS[this->range_]);
+  ESP_LOGCONFIG(TAG, "  Resolution: %s", RES_STRINGS[this->full_res_]);
 
-  const char* range_str;
-  switch (this->range_) {
-    case 0: range_str = "2G"; break;
-    case 1: range_str = "4G"; break;
-    case 2: range_str = "8G"; break;
-    case 3: range_str = "16G"; break;
-    default: range_str = "Unknown"; break;
-  }
-  ESP_LOGCONFIG(TAG, "  Range: %s", range_str);
-  ESP_LOGCONFIG(
-    TAG, "  Resolution: %s", this->full_res_ ? "Full" : "Fixed (10 bit)");
-
-  if (this->off_vertical_ != nullptr) LOG_SENSOR("  ", "Off Vertical", this->off_vertical_);
-  if (this->jitter_ != nullptr)       LOG_SENSOR("  ", "Jitter", this->jitter_);
-  if (this->accel_x_ != nullptr)      LOG_SENSOR("  ", "Acceleration X", this->accel_x_);
-  if (this->accel_y_ != nullptr)      LOG_SENSOR("  ", "Acceleration Y", this->accel_y_);
-  if (this->accel_z_ != nullptr)      LOG_SENSOR("  ", "Acceleration Z", this->accel_z_);
+  if (this->accel_x_ != nullptr)
+    LOG_SENSOR("  ", "Acceleration X", this->accel_x_);
+  if (this->accel_y_ != nullptr)
+    LOG_SENSOR("  ", "Acceleration Y", this->accel_y_);
+  if (this->accel_z_ != nullptr)
+    LOG_SENSOR("  ", "Acceleration Z", this->accel_z_);
 }
 
 void ADXL345Component::update() {
@@ -106,16 +149,6 @@ void ADXL345Component::update() {
   if (this->accel_y_ != nullptr) this->accel_y_->publish_state(y);
   if (this->accel_z_ != nullptr) this->accel_z_->publish_state(z);
 
-  if (this->off_vertical_ != nullptr) {
-    double pitch = atan(y / sqrt(pow(x, 2) + pow(z, 2))) * 180.0 / M_PI;
-    double roll  = atan(-x / sqrt(pow(y, 2) + pow(z, 2))) * 180.0 / M_PI;
-    this->off_vertical_->publish_state(std::max(std::abs(pitch), std::abs(roll)));
-  }
-
-  if (this->jitter_ != nullptr) {
-    float jitter = fabs(x) + fabs(y) + fabs(z);
-    this->jitter_->publish_state(jitter);
-  }
 }
 
 }  // namespace adxl345
