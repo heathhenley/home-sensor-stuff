@@ -38,14 +38,29 @@ adxl345:
       id: x
       name: "Acceleration X"
       unit_of_measurement: "m/s²"
+      filters:
+        - multiply: 9.80665
     accel_y:
       id: y
       name: "Acceleration Y"
       unit_of_measurement: "m/s²"
+      filters:
+        - multiply: 9.80665
     accel_z:
       id: z
       name: "Acceleration Z"
       unit_of_measurement: "m/s²"
+      filters:
+        - multiply: 9.80665
+
+    activity:
+      threshold_g: 0.5
+      coupling: AC
+      axis: [x, y, z]
+      binary_sensor:
+        id: activity
+        name: "Activity"
+#        delayed_off: 20min
 
 sensor:
   - platform: template
