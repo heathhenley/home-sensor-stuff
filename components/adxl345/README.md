@@ -11,9 +11,10 @@ Datasheet: [ADXL345](https://www.analog.com/media/en/technical-documentation/dat
 
 - Supports all standard I2C configuration options including multiple I2C buses
 - Configurable measurement range (2G, 4G, 8G, 16G)
+- Configurable fixed (10 bit) or full resolution mode (up to 13 bit)
 - Provides raw acceleration values for X, Y, and Z axes
-- Calculates off-vertical angle (useful for bed/chair position tracking)
-- Calculates jitter (total movement across all axes)
+- Configurable activity threshold and coupling (AC or DC) using on chip
+  activity detection logic
 - Full Home Assistant integration with proper device classes and units
 
 ## Installation
@@ -90,31 +91,16 @@ adxl345:
       name: "Acceleration Y"
     accel_z:
       name: "Acceleration Z"
-    off_vertical:
-      name: "Tilt Angle"
-      filters:
-        - sliding_window_moving_average:
-            window_size: 10
-            send_every: 5
-    jitter:
-      name: "Movement Detection"
-      filters:
-        - threshold:
-            above: 10.0
-            then: ON
-            below: 2.0
-            then: OFF
 ```
 
 ## Available Sensors
 
 | Sensor | Description | Unit |
 |--------|-------------|------|
-| `accel_x` | Raw X-axis acceleration | m/s² |
-| `accel_y` | Raw Y-axis acceleration | m/s² |
-| `accel_z` | Raw Z-axis acceleration | m/s² |
-| `off_vertical` | Maximum angle from vertical (derived from pitch and roll) | degrees |
-| `jitter` | Sum of absolute accelerations across all axes (movement detection) | m/s² |
+| `accel_x` | Raw X-axis acceleration | g |
+| `accel_y` | Raw Y-axis acceleration | g |
+| `accel_z` | Raw Z-axis acceleration | g |
+| `activity` | Activity detection state | bool |
 
 ## Example Use Cases
 
