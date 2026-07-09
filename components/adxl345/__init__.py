@@ -35,7 +35,9 @@ AXIS_Z = 2
 CONF_ACTIVITY_BINARY_SENSOR = "binary_sensor"
 
 ACTIVITY_SCHEMA = cv.Schema({
-    cv.Required(CONF_ACTIVITY_THRESHOLD_G): cv.positive_float,
+    cv.Required(CONF_ACTIVITY_THRESHOLD_G): cv.float_range(
+        min=0.0625, max=15.9375
+    ),
     cv.Optional(CONF_ACTIVITY_COUPLING, default="AC"): cv.enum({
         "AC": COUPLING_AC,
         "DC": COUPLING_DC,
@@ -87,23 +89,22 @@ async def to_code(config):
     
     cg.add(var.set_range(config[CONF_RANGE]))
 
-    if CONF_FULL_RES in config:
-        cg.add(var.set_full_res(config[CONF_FULL_RES]))
+    if full_res := config.get(CONF_FULL_RES):
+        cg.add(var.set_full_res(full_res))
     
-    if CONF_ACCEL_X in config:
-        sens = await sensor.new_sensor(config[CONF_ACCEL_X])
+    if accel_x := config.get(CONF_ACCEL_X):
+        sens = await sensor.new_sensor(accel_x)
         cg.add(var.set_accel_x_sensor(sens))
         
-    if CONF_ACCEL_Y in config:
-        sens = await sensor.new_sensor(config[CONF_ACCEL_Y])
+    if accel_y := config.get(CONF_ACCEL_Y):
+        sens = await sensor.new_sensor(accel_y)
         cg.add(var.set_accel_y_sensor(sens))
         
-    if CONF_ACCEL_Z in config:
-        sens = await sensor.new_sensor(config[CONF_ACCEL_Z])
+    if accel_z := config.get(CONF_ACCEL_Z):
+        sens = await sensor.new_sensor(accel_z)
         cg.add(var.set_accel_z_sensor(sens))
 
-    if CONF_ACTIVITY in config:
-        activity = config[CONF_ACTIVITY]
+    if activity := config.get(CONF_ACTIVITY):
         cg.add(var.set_threshold_g(activity[CONF_ACTIVITY_THRESHOLD_G]))
         cg.add(var.set_coupling(activity[CONF_ACTIVITY_COUPLING]))
         for axis in activity[CONF_ACTIVITY_AXIS]:
