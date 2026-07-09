@@ -34,6 +34,7 @@ adxl345:
     address: 0x53
     update_interval: 500ms
     range: 4G
+    full_res: true
     accel_x:
       id: x
       name: "Acceleration X"
@@ -54,13 +55,15 @@ adxl345:
         - multiply: 9.80665
 
     activity:
-      threshold_g: 0.5
+      threshold_g: 0.2
       coupling: AC
       axis: [x, y, z]
       binary_sensor:
         id: activity
-        name: "Activity"
-#        delayed_off: 20min
+        name: "Motion"
+        filters:
+          - delayed_off: 5sec
+          - delayed_on: 5sec
 
 sensor:
   - platform: template
@@ -85,14 +88,15 @@ binary_sensor:
       return id(smoothed_jitter).state > id(jitter_threshold).state;
     filters:
       - delayed_off: 20min
+      - delayed_on: 10sec
 
 number:
   - platform: template
     name: "Jitter Threshold"
     id: jitter_threshold
     optimistic: true
-    min_value: 10
-    max_value: 40
-    step: 0.5
-    initial_value: 13
+    min_value: 9
+    max_value: 12
+    step: 0.05
+    initial_value: 10.25
     restore_value: true
