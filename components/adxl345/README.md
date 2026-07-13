@@ -12,7 +12,7 @@ Datasheet: [ADXL345](https://www.analog.com/media/en/technical-documentation/dat
 - Supports all standard I2C configuration options including multiple I2C buses
 - Configurable measurement range (2G, 4G, 8G, 16G)
 - Configurable fixed (10 bit) or full resolution mode (up to 13 bit)
-- Provides raw acceleration values for X, Y, and Z axes
+- Provides raw acceleration values for X, Y, and Z axes in g
 - Configurable activity threshold and coupling (AC or DC) using on chip
   activity detection logic
 - Full Home Assistant integration with proper device classes and units
@@ -26,28 +26,6 @@ Datasheet: [ADXL345](https://www.analog.com/media/en/technical-documentation/dat
    - `adxl345.h`
    - `adxl345.cpp`
    - `sensor.py`
-
-## Dependencies
-
-This component requires the following libraries:
-- Wire
-- SPI
-- Adafruit BusIO
-- Adafruit Unified Sensor
-- Adafruit ADXL345
-
-Add these to your ESPHome configuration:
-
-```yaml
-libraries:
-  - "Wire"
-  - "SPI"
-  - "Adafruit BusIO"
-  - "Adafruit Unified Sensor"
-  - "Adafruit ADXL345"
-```
-
-## Usage
 
 ### Basic Configuration
 
@@ -65,46 +43,4 @@ adxl345:
       name: "Acceleration Z"
 ```
 
-### Advanced Configuration
 
-```yaml
-# Define I2C bus
-i2c:
-  sda: GPIO21
-  scl: GPIO22
-  frequency: 400kHz
-
-# Define component with all options
-adxl345:
-  - id: my_adxl345
-    address: 0x53
-    update_interval: 100ms
-    range: 4G  # Options: 2G, 4G, 8G, 16G
-    accel_x:
-      name: "Acceleration X"
-      filters:
-        - median:
-            window_size: 5
-            send_every: 5
-            send_first_at: 1
-    accel_y:
-      name: "Acceleration Y"
-    accel_z:
-      name: "Acceleration Z"
-```
-
-## Available Sensors
-
-| Sensor | Description | Unit |
-|--------|-------------|------|
-| `accel_x` | Raw X-axis acceleration | g |
-| `accel_y` | Raw Y-axis acceleration | g |
-| `accel_z` | Raw Z-axis acceleration | g |
-| `activity` | Activity detection state | bool |
-
-## Example Use Cases
-
-- Bed/chair incline monitoring
-- Movement detection
-- Vibration monitoring
-- Orientation sensing
