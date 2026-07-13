@@ -28,7 +28,10 @@ api:
 deep_sleep:
   id: deep_sleep_1
   run_duration: 25s
-  sleep_duration: 60min
+  sleep_duration: 30min
+
+safe_mode:
+  boot_is_good_after: 15s
 
 # I2C bus — XIAO ESP32-C3 default pins: D4=GPIO6 (SDA), D5=GPIO7 (SCL)
 i2c:
@@ -38,9 +41,6 @@ i2c:
 
 sensor:
   - platform: scd4x
-    # default must assume constant running, or it's just this chip
-    # but it was consistently biased low, it subtracts 4 C by
-    # default
     temperature_offset: 0
     co2:
       name: "CO2"
@@ -48,10 +48,6 @@ sensor:
       name: "Temperature"
     humidity:
       name: "Humidity"
-    # single_shot: one measurement per trigger (~5s), required for deep sleep.
-    # Trade-off vs periodic: lower CO2 accuracy and the first read after wake
-    # drifts. With update_interval 10s we trigger twice per 25s wake, so the
-    # published (second) reading is the more settled one.
     measurement_mode: single_shot
     update_interval: 10s
 
@@ -68,7 +64,7 @@ sensor:
     update_interval: 1s       # fast burst; median below smooths it
     accuracy_decimals: 2
     filters:
-      # divider is 1/2 (200k + 200k) -> multiply by 2 for true battery V
+      # divider is 1/2 (100k + 100k) -> multiply by 2 for true battery V
       - multiply: 2.0
       - median:
           window_size: 5
