@@ -1,5 +1,5 @@
 esphome:
-  name: washer
+  name: dryer
 
 esp32:
   board: seeed_xiao_esp32c3
@@ -95,7 +95,7 @@ number:
     id: jitter_threshold
     optimistic: true
     min_value: 9
-    max_value: 12
+    max_value: 20
     step: 0.05
-    initial_value: 10.25
+    initial_value: 11.0
     restore_value: true
